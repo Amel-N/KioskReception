@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Option</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://unpkg.com/@webex/webex/dist/webex.min.js"></script>
+    <script src="js/main.js" defer></script> <!-- JavaScript for call and message logic -->
+    <script src="js/alpine.js" defer></script> <!-- Updated to point to your alpine.js -->
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f9f9f9; /* Light background for better visibility */
+            position: relative; /* Allow positioning of the back button */
+        }
+        .options {
+            display: flex;
+            justify-content: center; /* Center the buttons horizontally */
+            gap: 60px; /* Space between buttons */
+        }
+        .option {
+            display: flex;
+            flex-direction: column; /* Stack image and label vertically */
+            align-items: center; /* Center image and label */
+            text-align: center; /* Center text for labels */
+        }
+        .button {
+            width: 150px; /* Set width for the circular button */
+            height: 150px; /* Set height for the circular button */
+            border-radius: 50%; /* Make it circular */
+            border: none; /* Remove border */
+            overflow: hidden; /* Hide overflow */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #007bff; /* Blue background for buttons */
+            transition: background-color 0.3s; /* Transition for hover effect */
+        }
+        .button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+        .button img {
+            width: 100%; /* Make image fill the button width */
+            height: 100%; /* Make image fill the button height */
+            object-fit: cover; /* Ensure the image covers the button */
+            border-radius: 50%; /* Keep the image circular */
+        }
+        .label {
+            margin-top: 10px; /* Space between button and label */
+            font-size: 20px; /* Set font size for labels */
+            color: white; /* Set label color to white */
+        }
+        .back-button {
+            position: absolute; /* Position the back button */
+            bottom: 20px; /* Space from the bottom */
+            left: 50px; /* Adjust space from the left to move towards the middle */
+            background-color: #add8e6; /* Light blue background for back button */
+            color: black; /* Black text color for contrast */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Padding for size */
+            font-size: 18px; /* Font size */
+            cursor: pointer; /* Pointer cursor */
+            transition: background-color 0.3s; /* Transition for hover effect */
+        }
+        .back-button:hover {
+            background-color: #87ceeb; /* Slightly darker blue on hover */
+        }
+        .suggestions {
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .suggestions div {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .suggestions div:hover {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body x-data="{
+        webex: null,
+        name: '',
+        hostName: '',
+        hostSuggestions: [],
+        async init() {
+            try {
+                this.webex = Webex.init();
+                await this.webex.meetings.register();
+                console.log('Webex initialized successfully');
+            } catch (error) {
+                console.error('Webex initialization failed:', error);
+            }
+        },
+        async searchHosts() {
+            if (this.hostName.length < 3) {
+                this.hostSuggestions = []; // Clear suggestions if less than 3 characters
+                return;
+            }
+            try {
+                // Search for users in the Webex directory
+                const results = await this.webex.people.list({ displayName: this.hostName });
+                this.hostSuggestions = results.items || [];
+            } catch (error) {
+                console.error('Error searching hosts:', error);
+            }
+        },
+        async sendMessageToHost(hostId) {
+            if (!this.webex) {
+                alert('Webex is not initialized.');
+                return;
+            }
+            try {
+                // Send message to the selected host
+                const message = `Visitor ${this.name} has arrived`;
+                await this.webex.messages.create({
+                    toPersonId: hostId,
+                    text: message
+                });
+                alert(`Message sent to ${this.hostName}`);
+            } catch (error) {
+                console.error('Message sending failed:', error);
+                alert('Failed to send message. Please try again.');
+            }
+        }
+    }" x-init="init()">
+    <header>
+        <h1>Choose Your Option</h1>
+    </header>
+    
+    <main>
+        <div class="options">
+            <div class="option">
+                <button class="button" @click="window.location.href = 'sip:9102'">
+                    <img src="images/reception.jpg" alt="Reception">
+                </button>
+                <div class="label">Reception</div>
+            </div>
+            <div class="option">
+                <button class="button" @click="window.location.href = 'sip:amel.nukicic@ignitetechnology.com'">
+                    <img src="images/shipping.jpg" alt="Shipping/Receiving">
+                </button>
+                <div class="label">Shipping/Receiving</div>
+            </div>
+            <div class="option">
+                <button class="button" @click="showMessagePopup = true">
+                    <img src="images/message.jpg" alt="Send Message">
+                </button>
+                <div class="label">Send Message</div>
+            </div>
+        </div>
+
+        <div x-show="showMessagePopup" class="popup">
+            <h3>Enter Your Name and Host</h3>
+            <input type="text" placeholder="Enter your name" x-model="name" />
+            <input type="text" placeholder="Enter Host Name" x-model="hostName" @input="searchHosts()" />
+            
+            <div class="suggestions" x-show="hostSuggestions.length > 0">
+                <template x-for="host in hostSuggestions" :key="host.id">
+                    <div @click="sendMessageToHost(host.id)">{{ host.displayName }}</div>
+                </template>
+            </div>
+            <button @click="showMessagePopup = false">Close</button>
+        </div>
+
+        <button class="back-button" onclick="window.location.href='index.html'">Back</button>
+    </main>
+</body>
+</html>
